@@ -7,5 +7,7 @@ export const Config = {
   RAILWAY: {
     GQL_URL: process.env.RAILWAY_GQL_URL,
     API_TOKEN: process.env.RAILWAY_API_TOKEN,
+    PROJECT_ID: process.env.RAILWAY_PROJECT_ID,
+    PROJECT_ENV_ID: process.env.RAILWAY_PROJECT_ENV_ID
   },
 };

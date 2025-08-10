@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Delete } from '@nestjs/common';
 import { ContainerService } from './container.service';
 import { SpinupContainerDTO } from 'src/dto';
 
@@ -9,19 +9,18 @@ export class ContainerController {
   @Post('/spin-up')
   spinUp(@Body() body: SpinupContainerDTO) {
     return this.containersService.spinUp({
-      projectId: body?.projectId,
       branch: body?.branchName,
       repo: body?.repoFullName,
     });
   }
 
-  @Post('/spin-down')
+  @Delete('/spin-down/:serviceId')
   spinDown(@Param('serviceId') serviceId: string) {
     return this.containersService.spinDown({ serviceId });
   }
 
-  @Get('/status/:serviceId')
-  getStatus(@Param('serviceId') serviceId: string) {
-    return this.containersService.getStatus({ serviceId });
+  @Get('/:serviceId')
+  getService(@Param('serviceId') serviceId: string) {
+    return this.containersService.getService({ serviceId });
   }
 }

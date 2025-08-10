@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { HttpException, Injectable } from '@nestjs/common';
-import { request, gql } from 'graphql-request';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { gql, request } from 'graphql-request';
 import { Config } from 'src/config';
 
 @Injectable()
@@ -14,11 +14,9 @@ export class ContainerService {
   }
   // Spin up (create) a service/container
   async spinUp({
-    projectId,
     repo,
     branch = "main",
   }: {
-    projectId: string;
     repo?: string;
     branch?: string;
   }) {
@@ -40,7 +38,7 @@ export class ContainerService {
 
       const variables: any = {
         input: {
-          projectId,
+          projectId: Config.RAILWAY.PROJECT_ID,
         },
       };
 
@@ -56,41 +54,65 @@ export class ContainerService {
       return res;
     } catch (e) {
       console.log(JSON.stringify({ e }, null, 2));
-      throw new HttpException(e?.message || "Something went wrong", e?.status || 500)
+      throw new InternalServerErrorException('Failed to spin up container!')
     }
   }
 
 
   // Spin down (delete) a service/container by serviceId
   async spinDown({ serviceId }: { serviceId: string }) {
-    const mutation = gql`
-      mutation serviceDelete($id: ID!) {
-        serviceDelete(id: $id) {
-          id
-        }
-      }
+    try {
+      const mutation = gql`
+     mutation serviceDelete($environmentId: String, $id: String!) {
+  serviceDelete(environmentId: $environmentId, id: $id)
+}
     `;
 
-    const variables = { id: serviceId };
+      const variables = {
+        id: serviceId,
+        "environmentId": Config.RAILWAY.PROJECT_ENV_ID
+      };
 
-    return request(this.railwayGqlUrl, mutation, variables, this.railwayGqlheaders);
+      return request(this.railwayGqlUrl, mutation, variables, this.railwayGqlheaders);
+    } catch (e) {
+      console.log(JSON.stringify({ e }, null, 2));
+      throw new InternalServerErrorException('Failed to spin down container!')
+
+    }
+
   }
 
-  // Get status of a service/container by serviceId
-  async getStatus({ serviceId }: { serviceId: string }) {
-    const query = gql`
-      query service($id: ID!) {
-        service(id: $id) {
-          id
-          name
-          state
-          url
-        }
-      }
-    `;
+  // Get a service/container by serviceId
+  async getService({ serviceId }: { serviceId: string }) {
+    try {
+      const query = gql`
+  query service($id: String!) {
+  service(id: $id) {
+    __typename
+    createdAt
+    deletedAt
+    # deployments
+    icon
+    id
+    name
+    # project
+    projectId
+    # repoTriggers
+    # serviceInstances
+    templateThreadSlug
+    updatedAt
+  }
+}`;
 
-    const variables = { id: serviceId };
+      const variables = { id: serviceId };
 
-    return request(this.railwayGqlUrl, query, variables, this.railwayGqlheaders);
+      const res = await request(this.railwayGqlUrl, query, variables, this.railwayGqlheaders);
+      console.log(JSON.stringify({ res }, null, 2));
+      return res;
+    } catch (e) {
+      console.log(JSON.stringify({ e }, null, 2));
+      throw new InternalServerErrorException(`Failed to retrieve container [${serviceId}]!`)
+    }
+
   }
 }
